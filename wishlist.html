@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BookHive Wishlist</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <main class="hero" style="background-image: url('Photo1.jpg');">
+    <div class="overlay"></div>
+
+    <header class="top-nav">
+      <nav>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="wishlist.html">WishList (<span id="wishlistCount">0</span>)</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <div class="content">
+      <h1 class="title">My Wishlist</h1>
+      <p class="subtitle">Books you saved to read later</p>
+
+      <section id="wishlistResults" class="results"></section>
+    </div>
+  </main>
+
+  <script>
+    const wishlistResults = document.getElementById('wishlistResults');
+
+    function updateCount(count) {
+      const el = document.getElementById('wishlistCount');
+      if (el) {
+        el.textContent = count;
+      }
+    }
+
+    async function loadWishlist() {
+      wishlistResults.innerHTML = '<p style="color:#fff;">Loading wishlist...</p>';
+
+      try {
+        const res = await fetch('/api/bookmarks');
+        if (!res.ok) {
+          throw new Error('Failed to load wishlist');
+        }
+
+        const books = await res.json();
+        updateCount(books.length);
+
+        if (books.length === 0) {
+          wishlistResults.innerHTML = '<p style="color:#fff;">Your wishlist is empty.</p>';
+          return;
+        }
+
+        wishlistResults.innerHTML = books.map((book) => `
+          <article class="card">
+            <div class="cover-wrap">
+              <img src="${book.img}" alt="${book.title}">
+              <button class="remove-btn" data-id="${String(book.id).replace(/"/g, '&quot;')}" title="Remove from Wishlist">−</button>
+            </div>
+            <div class="meta">
+              <h3>${book.title}</h3>
+              <p>${book.author || 'Unknown'}${book.year ? ` · ${book.year}` : ''}</p>
+            </div>
+          </article>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        wishlistResults.innerHTML = '<p style="color:#fff;">Could not load wishlist.</p>';
+      }
+    }
+
+    wishlistResults.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.remove-btn');
+      if (!btn) return;
+
+      const id = btn.dataset.id;
+
+      try {
+        const res = await fetch(`/api/bookmarks/${encodeURIComponent(id)}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to remove book');
+        }
+
+        loadWishlist();
+      } catch (err) {
+        console.error(err);
+        alert('Could not remove the book.');
+      }
+    });
+
+    loadWishlist();
+  </script>
+</body>
+</html>
